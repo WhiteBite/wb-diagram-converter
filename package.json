@@ -1,0 +1,89 @@
+{
+    "name": "@whitebite/diagram-converter",
+    "version": "0.1.0",
+    "description": "Universal diagram format converter - Mermaid, Draw.io, Excalidraw, PlantUML, DOT",
+    "author": "WhiteBite",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/WhiteBite/wb-diagram-converter.git"
+    },
+    "homepage": "https://github.com/WhiteBite/wb-diagram-converter#readme",
+    "bugs": {
+        "url": "https://github.com/WhiteBite/wb-diagram-converter/issues"
+    },
+    "keywords": [
+        "diagram",
+        "mermaid",
+        "drawio",
+        "draw.io",
+        "excalidraw",
+        "plantuml",
+        "dot",
+        "graphviz",
+        "converter",
+        "flowchart"
+    ],
+    "type": "module",
+    "main": "./dist/index.cjs",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js",
+            "require": "./dist/index.cjs"
+        },
+        "./parsers": {
+            "types": "./dist/parsers/index.d.ts",
+            "import": "./dist/parsers/index.js",
+            "require": "./dist/parsers/index.cjs"
+        },
+        "./generators": {
+            "types": "./dist/generators/index.d.ts",
+            "import": "./dist/generators/index.js",
+            "require": "./dist/generators/index.cjs"
+        },
+        "./types": {
+            "types": "./dist/types/index.d.ts",
+            "import": "./dist/types/index.js",
+            "require": "./dist/types/index.cjs"
+        }
+    },
+    "files": [
+        "dist",
+        "README.md",
+        "LICENSE"
+    ],
+    "scripts": {
+        "build": "tsup",
+        "dev": "tsup --watch",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "test:coverage": "vitest run --coverage",
+        "lint": "eslint src --ext .ts",
+        "typecheck": "tsc --noEmit",
+        "clean": "rimraf dist",
+        "prepublishOnly": "npm run build && npm run test"
+    },
+    "dependencies": {
+        "dagre": "^0.8.5"
+    },
+    "devDependencies": {
+        "@types/dagre": "^0.7.52",
+        "@types/node": "^20.10.0",
+        "@typescript-eslint/eslint-plugin": "^6.21.0",
+        "@typescript-eslint/parser": "^6.21.0",
+        "eslint": "^8.56.0",
+        "rimraf": "^5.0.5",
+        "tsup": "^8.0.1",
+        "typescript": "^5.3.3",
+        "vitest": "^1.1.0"
+    },
+    "engines": {
+        "node": ">=18"
+    },
+    "publishConfig": {
+        "access": "public"
+    }
+}
