@@ -402,3 +402,52 @@ describe('Text encoding options', () => {
         expect(result.output).toContain('Мир');
     });
 });
+
+
+describe('Mermaid to Mermaid (roundtrip)', () => {
+    it('should preserve node shapes in roundtrip conversion', () => {
+        const input = `flowchart LR
+    A[Start] --> B{Decision}
+    B -->|Yes| C[Process]
+    B -->|No| D[End]
+    C --> E((Result))
+    E --> D`;
+
+        const result = convert(input, {
+            from: 'mermaid',
+            to: 'mermaid',
+        });
+
+        // Check that shapes are preserved
+        expect(result.output).toContain('[Start]');
+        expect(result.output).toContain('{Decision}');
+        expect(result.output).toContain('[Process]');
+        expect(result.output).toContain('[End]');
+        expect(result.output).toContain('((Result))');
+
+        // Check that edge labels are preserved
+        expect(result.output).toContain('|Yes|');
+        expect(result.output).toContain('|No|');
+    });
+
+    it('should preserve all shape types', () => {
+        const input = `flowchart TB
+    A[Rectangle] --> B(Rounded)
+    B --> C{Diamond}
+    C --> D((Circle))
+    D --> E[(Database)]
+    E --> F{{Hexagon}}`;
+
+        const result = convert(input, {
+            from: 'mermaid',
+            to: 'mermaid',
+        });
+
+        expect(result.output).toContain('[Rectangle]');
+        expect(result.output).toContain('(Rounded)');
+        expect(result.output).toContain('{Diamond}');
+        expect(result.output).toContain('((Circle))');
+        expect(result.output).toContain('[(Database)]');
+        expect(result.output).toContain('{{Hexagon}}');
+    });
+});
