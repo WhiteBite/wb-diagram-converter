@@ -1,6 +1,6 @@
 {
     "name": "@whitebite/diagram-converter",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "description": "Universal diagram format converter - Mermaid, Draw.io, Excalidraw, PlantUML, DOT",
     "author": "WhiteBite",
     "license": "MIT",
@@ -74,10 +74,10 @@
         "@types/dagre": "^0.7.52",
         "@types/node": "^20.10.0",
         "eslint": "^9.17.0",
-        "typescript-eslint": "^8.18.0",
         "rimraf": "^5.0.5",
         "tsup": "^8.0.1",
         "typescript": "^5.3.3",
+        "typescript-eslint": "^8.18.0",
         "vitest": "^1.1.0"
     },
     "engines": {

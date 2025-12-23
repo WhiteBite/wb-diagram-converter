@@ -109,6 +109,8 @@ function generateMermaidArrow(arrow: ArrowConfig): string {
         result += '-.';
     } else if (arrow.lineType === 'dotted') {
         result += '..';
+    } else if (arrow.lineType === 'thick') {
+        result += '==';
     } else {
         result += '--';
     }
@@ -118,10 +120,12 @@ function generateMermaidArrow(arrow: ArrowConfig): string {
     else if (arrow.targetType === 'circle') result += 'o';
     else if (arrow.targetType === 'cross') result += 'x';
     else if (arrow.lineType === 'dashed') result += '-';
+    else if (arrow.lineType === 'thick') result += '=';
 
     // Ensure valid arrow
     if (result === '--') result = '---';
     if (result === '-.-') result = '-.-';
+    if (result === '==') result = '===';
 
     return result;
 }

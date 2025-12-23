@@ -477,10 +477,9 @@ describe('Edge Cases', () => {
         const dashed = diagram.edges.find(e => e.source === 'B');
         expect(dashed?.arrow.lineType).toBe('dashed');
 
-        // Note: ==> (thick) is parsed as solid in current implementation
-        // This is a known limitation - thick arrows are not yet supported
+        // Thick arrow ==>
         const thick = diagram.edges.find(e => e.source === 'C');
-        expect(thick?.arrow.lineType).toBe('solid'); // TODO: should be 'thick'
+        expect(thick?.arrow.lineType).toBe('thick');
 
         // Circle end
         const circle = diagram.edges.find(e => e.source === 'D');

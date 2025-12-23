@@ -47,7 +47,8 @@ export type ArrowHeadType =
 export type LineType =
     | 'solid'          // Solid line ───
     | 'dashed'         // Dashed line - - -
-    | 'dotted';        // Dotted line ···
+    | 'dotted'         // Dotted line ···
+    | 'thick';         // Thick line ═══
 
 /** Arrow configuration */
 export interface ArrowConfig {

@@ -19,13 +19,13 @@ export const MERMAID_ARROW_MAP: Record<string, ArrowConfig> = {
     '...': { sourceType: 'none', targetType: 'none', lineType: 'dotted' },
 
     // Thick arrows
-    '==>': { sourceType: 'none', targetType: 'arrow', lineType: 'solid' },
-    '===': { sourceType: 'none', targetType: 'none', lineType: 'solid' },
+    '==>': { sourceType: 'none', targetType: 'arrow', lineType: 'thick' },
+    '===': { sourceType: 'none', targetType: 'none', lineType: 'thick' },
 
     // Bidirectional
     '<-->': { sourceType: 'arrow', targetType: 'arrow', lineType: 'solid' },
     '<-.->': { sourceType: 'arrow', targetType: 'arrow', lineType: 'dashed' },
-    '<==>': { sourceType: 'arrow', targetType: 'arrow', lineType: 'solid' },
+    '<==>': { sourceType: 'arrow', targetType: 'arrow', lineType: 'thick' },
 
     // Circle endpoints
     '--o': { sourceType: 'none', targetType: 'circle', lineType: 'solid' },
@@ -60,6 +60,8 @@ export function parseMermaidArrow(arrow: string): ArrowConfig {
         config.lineType = 'dashed';
     } else if (normalized.includes('..')) {
         config.lineType = 'dotted';
+    } else if (normalized.includes('==') || normalized.includes('=')) {
+        config.lineType = 'thick';
     }
 
     // Detect source arrow
@@ -125,6 +127,8 @@ export function generateDrawioArrowStyle(arrow: ArrowConfig): string {
     } else if (arrow.lineType === 'dotted') {
         parts.push('dashed=1');
         parts.push('dashPattern=1 2');
+    } else if (arrow.lineType === 'thick') {
+        parts.push('strokeWidth=3');
     }
 
     return parts.join(';');
@@ -152,11 +156,13 @@ export function generateExcalidrawArrow(arrow: ArrowConfig): {
     startArrowhead: string | null;
     endArrowhead: string | null;
     strokeStyle: 'solid' | 'dashed' | 'dotted';
+    strokeWidth?: number;
 } {
     return {
         startArrowhead: EXCALIDRAW_ARROW_HEAD_MAP[arrow.sourceType],
         endArrowhead: EXCALIDRAW_ARROW_HEAD_MAP[arrow.targetType],
-        strokeStyle: arrow.lineType,
+        strokeStyle: arrow.lineType === 'thick' ? 'solid' : arrow.lineType,
+        ...(arrow.lineType === 'thick' ? { strokeWidth: 4 } : {}),
     };
 }
 
