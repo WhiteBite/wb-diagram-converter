@@ -41,8 +41,14 @@ export const DEFAULT_DIRECTION: LayoutDirection = 'TB';
 
 /** Supported formats */
 export const FORMATS = {
-    INPUT: ['mermaid', 'drawio', 'excalidraw', 'plantuml', 'dot'] as const,
-    OUTPUT: ['mermaid', 'drawio', 'excalidraw', 'plantuml', 'dot', 'svg', 'png'] as const,
+    INPUT: [
+        'mermaid', 'drawio', 'excalidraw', 'plantuml', 'dot',
+        'd2', 'structurizr', 'bpmn', 'graphml', 'lucidchart',
+    ] as const,
+    OUTPUT: [
+        'mermaid', 'drawio', 'excalidraw', 'plantuml', 'dot', 'svg', 'png',
+        'd2', 'structurizr', 'bpmn', 'graphml',
+    ] as const,
 } as const;
 
 /** Text encoding defaults */

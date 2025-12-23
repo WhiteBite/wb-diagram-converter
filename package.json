@@ -1,7 +1,7 @@
 {
     "name": "@whitebite/diagram-converter",
-    "version": "0.1.1",
-    "description": "Universal diagram format converter - Mermaid, Draw.io, Excalidraw, PlantUML, DOT",
+    "version": "0.2.0",
+    "description": "Universal diagram format converter - Mermaid, Draw.io, Excalidraw, PlantUML, DOT, D2, Structurizr, BPMN, GraphML, Lucidchart",
     "author": "WhiteBite",
     "license": "MIT",
     "repository": {
@@ -21,6 +21,13 @@
         "plantuml",
         "dot",
         "graphviz",
+        "d2",
+        "structurizr",
+        "c4",
+        "bpmn",
+        "graphml",
+        "yed",
+        "lucidchart",
         "converter",
         "flowchart"
     ],

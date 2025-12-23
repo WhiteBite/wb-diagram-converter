@@ -14,15 +14,21 @@ export * from './constants';
 // Utils
 export * from './utils';
 
-// Parsers
+// Parsers - Core
 export { parseMermaid } from './parsers/mermaid';
 export { parseDrawio } from './parsers/drawio';
 export { parseExcalidraw } from './parsers/excalidraw';
 export { parsePlantUML } from './parsers/plantuml';
 export { parseDot } from './parsers/dot';
+// Parsers - Extended
+export { parseD2 } from './parsers/d2';
+export { parseStructurizr } from './parsers/structurizr';
+export { parseBpmn, parseBpmn as parseBPMN } from './parsers/bpmn';
+export { parseGraphml, parseGraphml as parseGraphML } from './parsers/graphml';
+export { parseLucidchart } from './parsers/lucidchart';
 export * from './parsers/base';
 
-// Generators
+// Generators - Core
 export { generateDrawio } from './generators/drawio';
 export { generateExcalidraw } from './generators/excalidraw';
 export { generateMermaid } from './generators/mermaid';
@@ -30,6 +36,11 @@ export { generatePlantUML } from './generators/plantuml';
 export { generateDot } from './generators/dot';
 export { generateSvg } from './generators/svg';
 export { generatePng, generatePngBlob, generatePngWithInfo, downloadPng } from './generators/png';
+// Generators - Extended
+export { generateD2 } from './generators/d2';
+export { generateStructurizr } from './generators/structurizr';
+export { generateBpmn, generateBpmn as generateBPMN } from './generators/bpmn';
+export { generateGraphML } from './generators/graphml';
 export type { SvgOptions } from './generators/svg';
 export type { PngOptions, PngResult } from './generators/png';
 
@@ -50,6 +61,11 @@ import { parseDrawio } from './parsers/drawio';
 import { parseExcalidraw } from './parsers/excalidraw';
 import { parsePlantUML } from './parsers/plantuml';
 import { parseDot } from './parsers/dot';
+import { parseD2 } from './parsers/d2';
+import { parseStructurizr } from './parsers/structurizr';
+import { parseBpmn } from './parsers/bpmn';
+import { parseGraphml } from './parsers/graphml';
+import { parseLucidchart } from './parsers/lucidchart';
 import { generateDrawio } from './generators/drawio';
 import { generateExcalidraw } from './generators/excalidraw';
 import { generateMermaid } from './generators/mermaid';
@@ -57,6 +73,10 @@ import { generatePlantUML } from './generators/plantuml';
 import { generateDot } from './generators/dot';
 import { generateSvg } from './generators/svg';
 import { generatePng } from './generators/png';
+import { generateD2 } from './generators/d2';
+import { generateStructurizr } from './generators/structurizr';
+import { generateBpmn } from './generators/bpmn';
+import { generateGraphML } from './generators/graphml';
 import { autoLayout } from './layout/auto-layout';
 import { encodeText, transliterateCyrillic, hasCyrillic } from './utils/text-encoder';
 
@@ -67,6 +87,11 @@ const parsers: Record<InputFormat, (source: string) => Diagram> = {
     excalidraw: parseExcalidraw,
     plantuml: parsePlantUML,
     dot: parseDot,
+    d2: parseD2,
+    structurizr: parseStructurizr,
+    bpmn: parseBpmn,
+    graphml: parseGraphml,
+    lucidchart: parseLucidchart,
 };
 
 /** Generator functions by format */
@@ -78,6 +103,10 @@ const generators: Record<OutputFormat, (diagram: Diagram) => string> = {
     dot: generateDot,
     svg: generateSvg,
     png: generatePng,
+    d2: generateD2,
+    structurizr: generateStructurizr,
+    bpmn: generateBpmn,
+    graphml: generateGraphML,
 };
 
 /**

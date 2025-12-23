@@ -215,10 +215,31 @@ export interface Diagram {
 // =============================================================================
 
 /** Supported input formats */
-export type InputFormat = 'mermaid' | 'drawio' | 'excalidraw' | 'plantuml' | 'dot';
+export type InputFormat =
+    | 'mermaid'
+    | 'drawio'
+    | 'excalidraw'
+    | 'plantuml'
+    | 'dot'
+    | 'd2'
+    | 'structurizr'
+    | 'bpmn'
+    | 'graphml'
+    | 'lucidchart';
 
 /** Supported output formats */
-export type OutputFormat = 'mermaid' | 'drawio' | 'excalidraw' | 'plantuml' | 'dot' | 'svg' | 'png';
+export type OutputFormat =
+    | 'mermaid'
+    | 'drawio'
+    | 'excalidraw'
+    | 'plantuml'
+    | 'dot'
+    | 'svg'
+    | 'png'
+    | 'd2'
+    | 'structurizr'
+    | 'bpmn'
+    | 'graphml';
 
 /** Layout algorithm */
 export type LayoutAlgorithm = 'dagre' | 'elk' | 'none';
