@@ -89,30 +89,77 @@ export function detectMermaidShape(labelWithBrackets: string): { shape: NodeShap
 
 /** Generate Mermaid shape brackets for label */
 export function generateMermaidShape(shape: NodeShape, label: string): string {
+    // Clean and escape label for Mermaid
+    const cleanLabel = cleanMermaidLabel(label);
+
+    // Use placeholder for empty labels - must be non-empty and safe
+    const safeLabel = cleanLabel || 'node';
+
     switch (shape) {
         case 'rectangle':
-            return `[${label}]`;
+            return `["${safeLabel}"]`;
         case 'rounded-rectangle':
-            return `(${label})`;
+            return `("${safeLabel}")`;
         case 'circle':
-            return `((${label}))`;
+            return `(("${safeLabel}"))`;
         case 'ellipse':
-            return `([${label}])`;
+            return `(["${safeLabel}"])`;
         case 'diamond':
-            return `{${label}}`;
+            return `{"${safeLabel}"}`;
         case 'hexagon':
-            return `{{${label}}}`;
+            return `{{"${safeLabel}"}}`;
         case 'parallelogram':
-            return `[/${label}/]`;
+            return `[/"${safeLabel}"/]`;
         case 'trapezoid':
-            return `[/${label}\\]`;
+            return `[/"${safeLabel}"\\]`;
         case 'cylinder':
-            return `[(${label})]`;
+            return `[("${safeLabel}")]`;
         case 'note':
-            return `>${label}]`;
+            // Note shape uses different syntax - fallback to rectangle for safety
+            return `["${safeLabel}"]`;
         default:
-            return `[${label}]`;
+            return `["${safeLabel}"]`;
     }
+}
+
+/**
+ * Clean label for Mermaid syntax
+ * - Strip HTML tags
+ * - Escape special characters
+ * - Trim whitespace
+ */
+function cleanMermaidLabel(label: string): string {
+    if (!label) return '';
+
+    // Strip HTML tags
+    let clean = label.replace(/<[^>]*>/g, '');
+
+    // Decode HTML entities
+    clean = clean
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&nbsp;/g, ' ');
+
+    // Escape Mermaid special characters
+    // These characters have special meaning in Mermaid: [ ] ( ) { } < > | # " '
+    clean = clean
+        .replace(/"/g, "'")  // Replace double quotes with single
+        .replace(/\[/g, '(')  // Replace brackets that could break syntax
+        .replace(/\]/g, ')')
+        .replace(/\{/g, '(')
+        .replace(/\}/g, ')')
+        .replace(/\|/g, '/')  // Pipe is used for edge labels
+        .replace(/#/g, '')    // Hash can cause issues
+        .replace(/\n/g, ' ')  // Newlines to spaces
+        .replace(/\r/g, '');  // Remove carriage returns
+
+    // Trim and collapse multiple spaces
+    clean = clean.trim().replace(/\s+/g, ' ');
+
+    return clean;
 }
 
 // =============================================================================

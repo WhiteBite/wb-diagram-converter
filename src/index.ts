@@ -6,13 +6,20 @@
  */
 
 // Types
-export * from './types';
+export * from './types/ir';
+export * from './types/fixer';
+export * from './types/api';
+export * from './types/mutations';
+export * from './types/validation';
 
 // Constants
 export * from './constants';
 
 // Utils
 export * from './utils';
+
+// API - Fluent builders and mutators
+export { createDiagram, mutateDiagram } from './api';
 
 // Parsers - Core
 export { parseMermaid } from './parsers/mermaid';

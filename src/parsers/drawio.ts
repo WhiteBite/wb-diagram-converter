@@ -6,11 +6,13 @@
  * - Swimlanes and groups
  * - Edge waypoints
  * - All node shapes
+ * - Compressed diagram content (Confluence format)
  */
 
 import type { Diagram, DiagramNode, DiagramEdge, DiagramGroup, NodeShape, ArrowConfig } from '../types';
 import { createEmptyDiagram, createNode, createEdge, createGroup, validateInput, validatePattern } from './base';
 import { parseDrawioShape, DRAWIO_ARROW_HEAD_REVERSE } from '../utils';
+import pako from 'pako';
 
 /** Parsed style object */
 interface ParsedStyle {
@@ -77,9 +79,12 @@ export function parseDrawio(source: string): Diagram {
 
     const diagram = createEmptyDiagram('flowchart', 'drawio');
 
+    // Decompress if needed (Confluence stores Draw.io in compressed format)
+    const decompressedSource = decompressDrawioXml(source);
+
     // Parse XML
     const parser = new DOMParser();
-    const doc = parser.parseFromString(source, 'text/xml');
+    const doc = parser.parseFromString(decompressedSource, 'text/xml');
 
     // Check for parse errors
     const parseError = doc.querySelector('parsererror');
@@ -484,4 +489,113 @@ function decodeHtmlEntities(text: string): string {
     const textarea = document.createElement('textarea');
     textarea.innerHTML = text;
     return textarea.value;
+}
+
+/**
+ * Decompress Draw.io XML if it contains compressed content
+ * 
+ * Confluence and Draw.io store diagrams in compressed format:
+ * 1. mxGraphModel XML is deflate-compressed
+ * 2. Then URL-encoded  
+ * 3. Then base64-encoded
+ * 4. Stored in <diagram> element text content
+ */
+function decompressDrawioXml(source: string): string {
+    // Check if this is an mxfile with potentially compressed content
+    if (!source.includes('<mxfile')) {
+        return source;
+    }
+
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(source, 'text/xml');
+
+    // Check for parse errors
+    const parseError = doc.querySelector('parsererror');
+    if (parseError) {
+        return source;
+    }
+
+    // Find diagram elements
+    const diagrams = doc.querySelectorAll('diagram');
+    if (diagrams.length === 0) {
+        return source;
+    }
+
+    let modified = false;
+
+    diagrams.forEach(diagram => {
+        // If diagram already has mxGraphModel child, it's not compressed
+        if (diagram.querySelector('mxGraphModel')) {
+            return;
+        }
+
+        const content = diagram.textContent?.trim() || '';
+        if (!content || content.length < 20) {
+            return;
+        }
+
+        // Check if content looks like base64 (no XML tags)
+        if (content.includes('<') || content.includes('>')) {
+            return;
+        }
+
+        try {
+            // Try to decompress: base64 decode -> URL decode -> inflate
+            const decompressed = decompressBase64Content(content);
+
+            if (decompressed && decompressed.includes('<mxGraphModel')) {
+                // Parse decompressed content and replace diagram content
+                const decompressedDoc = parser.parseFromString(decompressed, 'text/xml');
+                const graphModel = decompressedDoc.querySelector('mxGraphModel');
+
+                if (graphModel && !decompressedDoc.querySelector('parsererror')) {
+                    // Clear diagram text and append decompressed mxGraphModel
+                    diagram.textContent = '';
+                    diagram.appendChild(doc.importNode(graphModel, true));
+                    modified = true;
+                }
+            }
+        } catch (error) {
+            // Decompression failed, keep original
+            console.warn('[DrawioParser] Decompression failed:', error);
+        }
+    });
+
+    if (modified) {
+        const serializer = new XMLSerializer();
+        return serializer.serializeToString(doc);
+    }
+
+    return source;
+}
+
+/**
+ * Decompress base64-encoded, deflate-compressed content
+ * Draw.io uses: deflate -> URL encode -> base64 encode
+ */
+function decompressBase64Content(encoded: string): string | null {
+    try {
+        // Step 1: Base64 decode
+        const decoded = atob(encoded);
+
+        // Step 2: Convert to byte array for pako
+        const bytes = new Uint8Array(decoded.length);
+        for (let i = 0; i < decoded.length; i++) {
+            bytes[i] = decoded.charCodeAt(i);
+        }
+
+        // Step 3: Inflate using pako (raw deflate)
+        const inflated = pako.inflateRaw(bytes, { to: 'string' });
+
+        // Step 4: URL decode the result
+        try {
+            return decodeURIComponent(inflated);
+        } catch {
+            // If URL decode fails, return as-is
+            return inflated;
+        }
+    } catch (error) {
+        console.warn('[DrawioParser] Base64 decompression failed:', error);
+        return null;
+    }
 }

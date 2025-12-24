@@ -1,10 +1,28 @@
 export * from './arrow-mapper';
 export * from './shape-mapper';
 export * from './style-mapper';
-export * from './validation';
 export * from './edge-routing';
 export * from './text-encoder';
 export { logger } from './logger';
+
+// Validation - old simple validator
+export {
+    validateDiagram as validateDiagramSimple,
+    isValidDiagram as isValidDiagramSimple,
+    getValidationErrors as getValidationErrorsSimple,
+    getValidationWarnings as getValidationWarningsSimple,
+} from './validation';
+
+// Validation - new comprehensive validator
+export {
+    validateDiagram,
+    isValidDiagram,
+    getValidationErrors,
+    getValidationWarnings,
+} from './ir-validator';
+
+// Cloner utilities
+export * from './ir-cloner';
 
 /** Generate unique ID */
 export function generateId(): string {

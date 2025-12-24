@@ -54,12 +54,15 @@ export function generateMermaid(diagram: Diagram): string {
 /** Generate group (subgraph) with optional direction */
 function generateGroup(group: DiagramGroup, nodes: DiagramNode[], parentDirection: string): string[] {
     const lines: string[] = [];
-    const label = group.label || group.id;
+    const rawLabel = group.label || group.id;
+    // Clean label for subgraph
+    const label = rawLabel.replace(/<[^>]*>/g, '').trim() || 'Group';
+    const safeGroupId = sanitizeMermaidId(group.id);
 
     // Check if group has its own direction in metadata
     const groupDirection = (group.metadata?.direction as string) || '';
 
-    lines.push(`    subgraph ${group.id}[${label}]`);
+    lines.push(`    subgraph ${safeGroupId}[${label}]`);
 
     // Add direction directive if different from parent
     if (groupDirection && groupDirection !== parentDirection) {
@@ -81,18 +84,46 @@ function generateGroup(group: DiagramGroup, nodes: DiagramNode[], parentDirectio
 
 /** Generate node definition: A[Label] */
 function generateNodeDefinition(node: DiagramNode): string {
-    return `${node.id}${generateMermaidShape(node.shape, node.label)}`;
+    // Sanitize node ID for Mermaid (alphanumeric and underscores only)
+    const safeId = sanitizeMermaidId(node.id);
+    return `${safeId}${generateMermaidShape(node.shape, node.label)}`;
+}
+
+/** Sanitize ID for Mermaid syntax */
+function sanitizeMermaidId(id: string): string {
+    // Replace non-alphanumeric characters with underscores
+    let safe = id.replace(/[^a-zA-Z0-9_]/g, '_');
+
+    // Ensure ID starts with a letter (Mermaid requirement)
+    if (!/^[a-zA-Z]/.test(safe)) {
+        safe = 'n_' + safe;
+    }
+
+    // Truncate very long IDs
+    if (safe.length > 30) {
+        safe = safe.substring(0, 30);
+    }
+
+    return safe;
 }
 
 /** Generate edge: A -->|label| B */
 function generateEdge(edge: DiagramEdge): string {
     const arrow = generateMermaidArrow(edge.arrow);
+    const sourceId = sanitizeMermaidId(edge.source);
+    const targetId = sanitizeMermaidId(edge.target);
 
     if (edge.label) {
-        return `${edge.source} ${arrow}|${edge.label}| ${edge.target}`;
+        // Clean edge label too
+        const cleanLabel = edge.label
+            .replace(/<[^>]*>/g, '')
+            .replace(/\|/g, '/')
+            .replace(/\n/g, ' ')
+            .trim();
+        return `${sourceId} ${arrow}|${cleanLabel}| ${targetId}`;
     }
 
-    return `${edge.source} ${arrow} ${edge.target}`;
+    return `${sourceId} ${arrow} ${targetId}`;
 }
 
 /** Generate Mermaid arrow syntax from ArrowConfig */
@@ -146,7 +177,8 @@ function generateClassDefs(nodes: DiagramNode[]): { classDefs: string[]; classAs
         if (!styleGroups.has(signature)) {
             styleGroups.set(signature, { style: node.style, nodeIds: [] });
         }
-        styleGroups.get(signature)!.nodeIds.push(node.id);
+        // Use sanitized ID
+        styleGroups.get(signature)!.nodeIds.push(sanitizeMermaidId(node.id));
     }
 
     // Generate classDef for each unique style

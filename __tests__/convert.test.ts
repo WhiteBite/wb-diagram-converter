@@ -418,12 +418,12 @@ describe('Mermaid to Mermaid (roundtrip)', () => {
             to: 'mermaid',
         });
 
-        // Check that shapes are preserved
-        expect(result.output).toContain('[Start]');
-        expect(result.output).toContain('{Decision}');
-        expect(result.output).toContain('[Process]');
-        expect(result.output).toContain('[End]');
-        expect(result.output).toContain('((Result))');
+        // Check that shapes are preserved (generator uses quoted labels)
+        expect(result.output).toContain('["Start"]');
+        expect(result.output).toContain('{"Decision"}');
+        expect(result.output).toContain('["Process"]');
+        expect(result.output).toContain('["End"]');
+        expect(result.output).toContain('(("Result"))');
 
         // Check that edge labels are preserved
         expect(result.output).toContain('|Yes|');
@@ -443,11 +443,12 @@ describe('Mermaid to Mermaid (roundtrip)', () => {
             to: 'mermaid',
         });
 
-        expect(result.output).toContain('[Rectangle]');
-        expect(result.output).toContain('(Rounded)');
-        expect(result.output).toContain('{Diamond}');
-        expect(result.output).toContain('((Circle))');
-        expect(result.output).toContain('[(Database)]');
-        expect(result.output).toContain('{{Hexagon}}');
+        // Generator uses quoted labels
+        expect(result.output).toContain('["Rectangle"]');
+        expect(result.output).toContain('("Rounded")');
+        expect(result.output).toContain('{"Diamond"}');
+        expect(result.output).toContain('(("Circle"))');
+        expect(result.output).toContain('[("Database")]');
+        expect(result.output).toContain('{{"Hexagon"}}');
     });
 });
