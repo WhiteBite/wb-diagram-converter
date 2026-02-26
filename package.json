@@ -66,6 +66,7 @@
         "build": "tsup",
         "dev": "tsup --watch",
         "test": "vitest run",
+        "test:matrix": "vitest run __tests__/roundtrip-matrix-all-formats.test.ts",
         "test:watch": "vitest",
         "test:coverage": "vitest run --coverage",
         "lint": "eslint src __tests__",
@@ -75,7 +76,8 @@
     },
     "dependencies": {
         "dagre": "^0.8.5",
-        "pako": "^2.1.0"
+        "pako": "^2.1.0",
+        "zod": "^4.2.1"
     },
     "devDependencies": {
         "@eslint/js": "^9.17.0",

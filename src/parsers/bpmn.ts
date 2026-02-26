@@ -6,9 +6,12 @@
  */
 
 import type { Diagram, DiagramNode, DiagramEdge, DiagramGroup, NodeShape } from '../types';
+import { validateInput } from './base';
 
 /** Parse BPMN XML to IR */
 export function parseBpmn(xml: string): Diagram {
+    validateInput(xml, 'bpmn');
+
     const parser = new DOMParser();
     const doc = parser.parseFromString(xml, 'text/xml');
 

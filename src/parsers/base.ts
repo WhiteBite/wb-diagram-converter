@@ -7,6 +7,7 @@
 import type { Diagram, DiagramNode, DiagramEdge, DiagramGroup, DiagramType, InputFormat } from '../types';
 import { generateId } from '../utils';
 import { ParseError } from '../errors';
+import { InputSchemas, type InputSchemaFormat } from '../types/schemas';
 
 /** Parser result with optional warnings */
 export interface ParseResult {
@@ -27,7 +28,7 @@ export interface DiagramParser {
 }
 
 /**
- * Validate parser input
+ * Validate parser input using Zod schema
  * 
  * @throws ParseError if input is invalid
  */
@@ -42,6 +43,22 @@ export function validateInput(source: unknown, format: InputFormat): asserts sou
 
     if (source.trim().length === 0) {
         throw new ParseError(`Source cannot be empty`, format);
+    }
+
+    // Apply Zod schema validation if available for this format
+    const schemaFormat = format as InputSchemaFormat;
+    const schema = InputSchemas[schemaFormat];
+
+    if (schema) {
+        const result = schema.safeParse(source);
+        if (!result.success) {
+            // Zod 4 uses 'issues', Zod 3 uses 'errors'
+            const issues = (result.error as { issues?: Array<{ message: string }>; errors?: Array<{ message: string }> }).issues
+                || (result.error as { errors?: Array<{ message: string }> }).errors
+                || [];
+            const errorMessage = issues[0]?.message || 'Invalid input';
+            throw new ParseError(errorMessage, format);
+        }
     }
 }
 

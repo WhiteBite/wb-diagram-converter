@@ -4,7 +4,7 @@
  * Generates Excalidraw JSON format from IR
  */
 
-import type { Diagram, DiagramNode, DiagramEdge } from '../types';
+import type { Diagram, DiagramNode, DiagramEdge, DiagramGroup } from '../types';
 import { generateId, EXCALIDRAW_SHAPE_MAP, getExcalidrawRoundness, generateExcalidrawArrow } from '../utils';
 
 interface ExcalidrawElement {
@@ -68,6 +68,25 @@ interface ExcalidrawFile {
 export function generateExcalidraw(diagram: Diagram): string {
     const elements: ExcalidrawElement[] = [];
     const nodeElementMap = new Map<string, string>(); // node.id -> element.id
+    const groupElementMap = new Map<string, string>(); // group.id -> groupId for Excalidraw
+
+    // Create group IDs for each diagram group
+    for (const group of diagram.groups) {
+        groupElementMap.set(group.id, generateId());
+    }
+
+    // Generate group frame elements (visual containers)
+    for (const group of diagram.groups) {
+        const groupId = groupElementMap.get(group.id)!;
+        const frameElement = createGroupFrameElement(group, groupId, diagram.nodes);
+        elements.push(frameElement);
+
+        // Add label for group
+        if (group.label) {
+            const labelElement = createGroupLabelElement(group, frameElement);
+            elements.push(labelElement);
+        }
+    }
 
     // Generate node elements
     for (const node of diagram.nodes) {
@@ -342,4 +361,124 @@ function getDefaultSize(shape: string): { width: number; height: number } {
         default:
             return { width: 150, height: 75 };
     }
+}
+
+/** Create frame element for group (visual container) */
+function createGroupFrameElement(
+    group: DiagramGroup,
+    groupId: string,
+    nodes: DiagramNode[]
+): ExcalidrawElement {
+    // Calculate bounds from group's children nodes
+    const childNodes = nodes.filter(n => group.children.includes(n.id));
+    const bounds = calculateGroupBounds(childNodes, group);
+
+    return {
+        id: groupId,
+        type: 'rectangle',
+        x: bounds.x,
+        y: bounds.y,
+        width: bounds.width,
+        height: bounds.height,
+        angle: 0,
+        strokeColor: group.style.stroke || '#868e96',
+        backgroundColor: group.style.fill || '#f8f9fa',
+        fillStyle: 'solid',
+        strokeWidth: 1,
+        strokeStyle: group.style.strokeDasharray ? 'dashed' : 'solid',
+        roughness: 0,
+        opacity: group.style.opacity !== undefined ? group.style.opacity * 100 : 30,
+        groupIds: [],
+        updated: Date.now(),
+        link: null,
+        locked: false,
+        roundness: { type: 3 },
+    };
+}
+
+/** Create label element for group */
+function createGroupLabelElement(
+    group: DiagramGroup,
+    frameElement: ExcalidrawElement
+): ExcalidrawTextElement {
+    const labelPosition = group.style.labelPosition || 'top';
+    let x = frameElement.x + 10;
+    let y = frameElement.y + 10;
+
+    if (labelPosition === 'bottom') {
+        y = frameElement.y + frameElement.height - 30;
+    }
+
+    return {
+        id: generateId(),
+        type: 'text',
+        x,
+        y,
+        width: frameElement.width - 20,
+        height: 20,
+        angle: 0,
+        strokeColor: '#495057',
+        backgroundColor: 'transparent',
+        fillStyle: 'hachure',
+        strokeWidth: 1,
+        strokeStyle: 'solid',
+        roughness: 0,
+        opacity: 100,
+        groupIds: [],
+        text: group.label || group.id,
+        fontSize: 14,
+        fontFamily: 1,
+        textAlign: 'left',
+        verticalAlign: 'top',
+        baseline: 14,
+        containerId: null,
+        originalText: group.label || group.id,
+        updated: Date.now(),
+        link: null,
+        locked: false,
+    };
+}
+
+/** Calculate bounding box for group based on child nodes */
+function calculateGroupBounds(
+    childNodes: DiagramNode[],
+    group: DiagramGroup
+): { x: number; y: number; width: number; height: number } {
+    // Use group's own position/size if defined
+    if (group.position && group.size) {
+        return {
+            x: group.position.x,
+            y: group.position.y,
+            width: group.size.width,
+            height: group.size.height,
+        };
+    }
+
+    // Calculate from children
+    if (childNodes.length === 0) {
+        return { x: 50, y: 50, width: 200, height: 150 };
+    }
+
+    const padding = 40;
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+
+    for (const node of childNodes) {
+        const pos = node.position || { x: 100, y: 100 };
+        const size = node.size || getDefaultSize(node.shape);
+
+        minX = Math.min(minX, pos.x);
+        minY = Math.min(minY, pos.y);
+        maxX = Math.max(maxX, pos.x + size.width);
+        maxY = Math.max(maxY, pos.y + size.height);
+    }
+
+    return {
+        x: minX - padding,
+        y: minY - padding - 20, // Extra space for label
+        width: maxX - minX + padding * 2,
+        height: maxY - minY + padding * 2 + 20,
+    };
 }

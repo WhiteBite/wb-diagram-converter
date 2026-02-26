@@ -11,6 +11,7 @@ export * from './types/fixer';
 export * from './types/api';
 export * from './types/mutations';
 export * from './types/validation';
+export * from './types/cross-origin';
 
 // Constants
 export * from './constants';
@@ -18,8 +19,20 @@ export * from './constants';
 // Utils
 export * from './utils';
 
+// Format detection (re-export for convenience)
+export { detectFormat, detectFormatSimple, isFormat, detectAllFormats } from './utils/detect-format';
+export type { DetectionResult } from './utils/detect-format';
+
 // API - Fluent builders and mutators
 export { createDiagram, mutateDiagram } from './api';
+
+// API - Web Worker support
+export { convertInWorker } from './api/worker';
+export type { WorkerMessage, WorkerResponse } from './api/worker';
+
+// API - Diff
+export { compareDiagrams } from './api/diff';
+export type { DiffResult, DiffSummary, ElementDiff } from './api/diff';
 
 // Parsers - Core
 export { parseMermaid } from './parsers/mermaid';
@@ -33,6 +46,10 @@ export { parseStructurizr } from './parsers/structurizr';
 export { parseBpmn, parseBpmn as parseBPMN } from './parsers/bpmn';
 export { parseGraphml, parseGraphml as parseGraphML } from './parsers/graphml';
 export { parseLucidchart } from './parsers/lucidchart';
+// Parsers - Sequence
+export { parseSequenceDiagram, parseSequence } from './parsers/sequence-parser';
+// Parsers - State
+export { parseStateDiagram, parseToStateDiagramIR } from './parsers/state';
 export * from './parsers/base';
 
 // Generators - Core
@@ -48,6 +65,10 @@ export { generateD2 } from './generators/d2';
 export { generateStructurizr } from './generators/structurizr';
 export { generateBpmn, generateBpmn as generateBPMN } from './generators/bpmn';
 export { generateGraphML } from './generators/graphml';
+// Generators - Sequence
+export { generateSequenceDiagram, generateSequence } from './generators/sequence-generator';
+// Generators - State
+export { generateStateDiagram, generateStateDiagramCode } from './generators/state';
 export type { SvgOptions } from './generators/svg';
 export type { PngOptions, PngResult } from './generators/png';
 

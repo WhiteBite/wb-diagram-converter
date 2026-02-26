@@ -5,6 +5,7 @@
  */
 
 import type { Diagram, DiagramNode, DiagramEdge, DiagramGroup, NodeShape } from '../types';
+import { validateInput } from './base';
 
 interface LucidShape {
     id: string;
@@ -38,6 +39,8 @@ interface LucidDocument {
 
 /** Parse Lucidchart JSON to IR */
 export function parseLucidchart(json: string): Diagram {
+    validateInput(json, 'lucidchart');
+
     const data: LucidDocument = JSON.parse(json);
 
     const nodes: DiagramNode[] = [];

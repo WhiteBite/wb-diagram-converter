@@ -6,9 +6,12 @@
  */
 
 import type { Diagram, DiagramNode, DiagramEdge, DiagramGroup, NodeShape } from '../types';
+import { validateInput } from './base';
 
 /** Parse GraphML XML to IR */
 export function parseGraphml(xml: string): Diagram {
+    validateInput(xml, 'graphml');
+
     const parser = new DOMParser();
     const doc = parser.parseFromString(xml, 'text/xml');
 

@@ -1,6 +1,6 @@
 /**
  * PlantUML parser
- * 
+ *
  * Parses PlantUML syntax to IR:
  * - Component/Activity diagrams
  * - Sequence diagrams
@@ -8,7 +8,14 @@
  * - Notes
  */
 
-import type { Diagram, DiagramNode, DiagramEdge, DiagramGroup, NodeShape, ArrowConfig } from '../types';
+import type {
+    Diagram,
+    DiagramNode,
+    DiagramEdge,
+    DiagramGroup,
+    NodeShape,
+    ArrowConfig,
+} from '../types';
 import { createEmptyDiagram, createNode, createEdge, createGroup, validateInput } from './base';
 
 /** Diagram type detection */
@@ -44,23 +51,35 @@ function detectDiagramType(source: string): PlantUMLDiagramType {
 
     // Sequence diagram indicators
     if (lower.includes('->') && (lower.includes('participant') || lower.includes('actor'))) {
-        if (lower.includes('activate') || lower.includes('deactivate') ||
-            /\w+\s*->\s*\w+\s*:/.test(source)) {
+        if (
+            lower.includes('activate') ||
+            lower.includes('deactivate') ||
+            /\w+\s*->\s*\w+\s*:/.test(source)
+        ) {
             return 'sequence';
         }
     }
 
     // Class diagram indicators
-    if (lower.includes('class ') || lower.includes('interface ') ||
-        lower.includes('abstract ') || lower.includes('<|--') ||
-        lower.includes('--|>') || lower.includes('{field}') ||
-        lower.includes('{method}')) {
+    if (
+        lower.includes('class ') ||
+        lower.includes('interface ') ||
+        lower.includes('abstract ') ||
+        lower.includes('<|--') ||
+        lower.includes('--|>') ||
+        lower.includes('{field}') ||
+        lower.includes('{method}')
+    ) {
         return 'class';
     }
 
     // Activity diagram indicators
-    if (lower.includes('start') && lower.includes('stop') &&
-        (lower.includes(':') && lower.includes(';'))) {
+    if (
+        lower.includes('start') &&
+        lower.includes('stop') &&
+        lower.includes(':') &&
+        lower.includes(';')
+    ) {
         return 'activity';
     }
 
@@ -86,7 +105,9 @@ function parseSequenceDiagram(source: string): Diagram {
 
     for (const line of lines) {
         // Note start
-        const noteStartMatch = line.match(/^note\s+(left|right|over)\s*(?:of\s+)?(\w+)?(?:\s*:\s*(.+))?$/i);
+        const noteStartMatch = line.match(
+            /^note\s+(left|right|over)\s*(?:of\s+)?(\w+)?(?:\s*:\s*(.+))?$/i
+        );
         if (noteStartMatch) {
             const [, position, target, inlineText] = noteStartMatch;
             if (inlineText) {
@@ -127,7 +148,8 @@ function parseSequenceDiagram(source: string): Diagram {
         }
 
         // Participant/Actor definition
-        const participantMatch = line.match(/^(participant|actor)\s+"?([^"]+)"?\s+as\s+(\w+)/i) ||
+        const participantMatch =
+            line.match(/^(participant|actor)\s+"?([^"]+)"?\s+as\s+(\w+)/i) ||
             line.match(/^(participant|actor)\s+(\w+)/i);
         if (participantMatch) {
             const [, type, labelOrId, alias] = participantMatch;
@@ -145,7 +167,9 @@ function parseSequenceDiagram(source: string): Diagram {
         }
 
         // Message: A -> B : text
-        const messageMatch = line.match(/^(\w+)\s*(-+>+|<-+|->+x|x<-+|-+>>|<<-+|\.+>|<\.+)\s*(\w+)\s*(?::\s*(.+))?$/);
+        const messageMatch = line.match(
+            /^(\w+)\s*(-+>+|<-+|->+x|x<-+|-+>>|<<-+|\.+>|<\.+)\s*(\w+)\s*(?::\s*(.+))?$/
+        );
         if (messageMatch) {
             const [, from, arrow, to, label] = messageMatch;
 
@@ -174,7 +198,7 @@ function parseSequenceDiagram(source: string): Diagram {
             (meta.activations as Array<{ action: string; target: string; order: number }>).push({
                 action: action.toLowerCase(),
                 target,
-                order: messageIndex
+                order: messageIndex,
             });
             continue;
         }
@@ -210,7 +234,8 @@ function parseClassDiagram(source: string): Diagram {
 
     for (const line of lines) {
         // Note handling
-        const noteMatch = line.match(/^note\s+"([^"]+)"\s+as\s+(\w+)/i) ||
+        const noteMatch =
+            line.match(/^note\s+"([^"]+)"\s+as\s+(\w+)/i) ||
             line.match(/^note\s+(left|right|top|bottom)\s+of\s+(\w+)\s*:\s*(.+)/i);
         if (noteMatch) {
             if (noteMatch[3]) {
@@ -256,7 +281,9 @@ function parseClassDiagram(source: string): Diagram {
         }
 
         // Class/Interface definition start
-        const classMatch = line.match(/^(class|interface|abstract\s+class|abstract|enum)\s+"?([^"{]+)"?\s*(?:<<\s*(\w+)\s*>>)?\s*\{?$/i);
+        const classMatch = line.match(
+            /^(class|interface|abstract\s+class|abstract|enum)\s+"?([^"{]+)"?\s*(?:<<\s*(\w+)\s*>>)?\s*\{?$/i
+        );
         if (classMatch) {
             const [, type, name, stereotype] = classMatch;
             const id = name.trim();
@@ -312,7 +339,9 @@ function parseClassDiagram(source: string): Diagram {
 
             if (methodMatch) {
                 const [, visibility, name, params, returnType] = methodMatch;
-                currentClass.methods.push(`${visibility || '+'}${name}(${params})${returnType ? ': ' + returnType : ''}`);
+                currentClass.methods.push(
+                    `${visibility || '+'}${name}(${params})${returnType ? ': ' + returnType : ''}`
+                );
             } else if (memberMatch) {
                 const [, visibility, name, type] = memberMatch;
                 currentClass.members.push(`${visibility || '+'}${name}: ${type}`);
@@ -363,7 +392,9 @@ function parseComponentDiagram(source: string): Diagram {
 
     for (const line of lines) {
         // Note handling
-        const noteMatch = line.match(/^note\s+(left|right|top|bottom)(?:\s+of\s+(\w+))?\s*:\s*(.+)$/i);
+        const noteMatch = line.match(
+            /^note\s+(left|right|top|bottom)(?:\s+of\s+(\w+))?\s*:\s*(.+)$/i
+        );
         if (noteMatch) {
             const [, position, target, text] = noteMatch;
             notes.push({
@@ -410,8 +441,13 @@ function parseComponentDiagram(source: string): Diagram {
         }
 
         // Parse package/group start
-        const packageMatch = line.match(/^(package|rectangle|frame|folder|node|namespace)\s+"([^"]+)"\s*(?:as\s+(\w+))?\s*\{?$/i) ||
-            line.match(/^(package|rectangle|frame|folder|node|namespace)\s+(\w+)\s*\{?$/i);
+        const packageMatch =
+            line.match(
+                /^(package|rectangle|database|cloud|frame|folder|node|namespace)\s+"([^"]+)"\s*(?:as\s+(\w+))?\s*\{\s*$/i
+            ) ||
+            line.match(
+                /^(package|rectangle|database|cloud|frame|folder|node|namespace)\s+(\w+)\s*\{\s*$/i
+            );
         if (packageMatch) {
             const [, , labelOrId, alias] = packageMatch;
             const id = alias || sanitizeId(labelOrId);
@@ -506,11 +542,7 @@ function ensureParticipant(
 }
 
 /** Ensure class exists in class diagram */
-function ensureClass(
-    id: string,
-    classes: Map<string, DiagramNode>,
-    diagram: Diagram
-): void {
+function ensureClass(id: string, classes: Map<string, DiagramNode>, diagram: Diagram): void {
     if (!classes.has(id)) {
         const node = createNode(id, id, { shape: 'rectangle' });
         node.metadata = { classType: 'class' };
@@ -613,17 +645,25 @@ function parseNodeLine(line: string): DiagramNode | null {
 
     const patterns = [
         // shape "label" as alias [style]
-        /^(rectangle|actor|database|cloud|file|circle|diamond|hexagon|card|usecase|component|interface|storage)\s+"([^"]+)"\s+as\s+(\w+)/i,
+        /^(rectangle|actor|database|cloud|file|circle|diamond|hexagon|card|usecase|component|interface|storage|agent)\s+"([^"]+)"\s+as\s+(\w+)/i,
+        // shape alias as "label" [style]
+        /^(rectangle|actor|database|cloud|file|circle|diamond|hexagon|card|usecase|component|interface|storage|agent)\s+(\w+)\s+as\s+"([^"]+)"/i,
         // shape alias [style]
-        /^(rectangle|actor|database|cloud|file|circle|diamond|hexagon|card|usecase|component|interface|storage)\s+(\w+)/i,
+        /^(rectangle|actor|database|cloud|file|circle|diamond|hexagon|card|usecase|component|interface|storage|agent)\s+(\w+)/i,
     ];
 
     for (const pattern of patterns) {
         const match = line.match(pattern);
         if (match) {
-            if (match.length === 4) {
+            if (match.length === 4 && /\"/.test(line) && /\s+as\s+\w+/i.test(line)) {
                 // shape "label" as alias
                 const [, shapeStr, label, alias] = match;
+                return createNode(alias, label, {
+                    shape: mapPlantUMLShape(shapeStr.toLowerCase()),
+                });
+            } else if (match.length === 4 && /\s+\w+\s+as\s+\"/.test(line)) {
+                // shape alias as "label"
+                const [, shapeStr, alias, label] = match;
                 return createNode(alias, label, {
                     shape: mapPlantUMLShape(shapeStr.toLowerCase()),
                 });
@@ -673,11 +713,7 @@ function parseEdgeLine(
 }
 
 /** Ensure node exists, create if not */
-function ensureNode(
-    id: string,
-    nodeMap: Map<string, DiagramNode>,
-    diagram: Diagram
-): void {
+function ensureNode(id: string, nodeMap: Map<string, DiagramNode>, diagram: Diagram): void {
     if (!nodeMap.has(id)) {
         const node = createNode(id, id);
         nodeMap.set(id, node);
@@ -734,19 +770,20 @@ function parsePlantUMLArrow(arrow: string): ArrowConfig {
 /** Map PlantUML shape to IR shape */
 function mapPlantUMLShape(shape: string): NodeShape {
     const shapeMap: Record<string, NodeShape> = {
-        'rectangle': 'rectangle',
-        'actor': 'actor',
-        'database': 'cylinder',
-        'storage': 'cylinder',
-        'cloud': 'cloud',
-        'file': 'document',
-        'circle': 'circle',
-        'diamond': 'diamond',
-        'hexagon': 'hexagon',
-        'card': 'rounded-rectangle',
-        'usecase': 'ellipse',
-        'component': 'rectangle',
-        'interface': 'circle',
+        rectangle: 'rectangle',
+        actor: 'actor',
+        database: 'cylinder',
+        storage: 'cylinder',
+        cloud: 'cloud',
+        file: 'document',
+        circle: 'circle',
+        diamond: 'diamond',
+        hexagon: 'hexagon',
+        card: 'rounded-rectangle',
+        usecase: 'ellipse',
+        component: 'rectangle',
+        interface: 'circle',
+        agent: 'diamond',
     };
 
     return shapeMap[shape] || 'rectangle';

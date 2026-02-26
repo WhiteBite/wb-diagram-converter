@@ -1,15 +1,18 @@
 /**
  * D2 Parser
- * 
+ *
  * Parses D2 diagram language to IR
  * D2 is a modern diagram scripting language
  * https://d2lang.com/
  */
 
 import type { Diagram, DiagramNode, DiagramEdge, DiagramGroup, NodeShape } from '../types';
+import { validateInput } from './base';
 
 /** Parse D2 code to IR */
 export function parseD2(code: string): Diagram {
+    validateInput(code, 'd2');
+
     const lines = code.split('\n');
     const nodes = new Map<string, DiagramNode>();
     const edges: DiagramEdge[] = [];
@@ -23,7 +26,7 @@ export function parseD2(code: string): Diagram {
         const line = rawLine.trim();
         if (!line || line.startsWith('#')) continue;
 
-        // Check for group/container definition: name: { or name { 
+        // Check for group/container definition: name: { or name {
         const groupMatch = line.match(/^(\w+)\s*:\s*\{?\s*$/) || line.match(/^(\w+)\s*\{\s*$/);
         if (groupMatch && line.includes('{')) {
             const groupId = groupMatch[1];
@@ -45,7 +48,7 @@ export function parseD2(code: string): Diagram {
         }
 
         // Parse edge: a -> b or a -- b or a <-> b
-        const edgeMatch = line.match(/^(\w+)\s*(->|<->|--|<-)\s*(\w+)(?:\s*:\s*(.+))?$/);
+        const edgeMatch = line.match(/^([\w-]+)\s*(->|<->|--|<-)\s*([\w-]+)(?:\s*:\s*(.+))?$/);
         if (edgeMatch) {
             const [, sourceId, arrow, targetId, label] = edgeMatch;
 
@@ -70,7 +73,7 @@ export function parseD2(code: string): Diagram {
         }
 
         // Parse node definition: name: label or name: { shape: ... }
-        const nodeMatch = line.match(/^(\w+)\s*:\s*(.+)$/);
+        const nodeMatch = line.match(/^([\w-]+)\s*:\s*(.+)$/);
         if (nodeMatch) {
             const [, id, value] = nodeMatch;
             const shape = detectD2Shape(value);
@@ -83,7 +86,7 @@ export function parseD2(code: string): Diagram {
         }
 
         // Simple node reference
-        const simpleNode = line.match(/^(\w+)$/);
+        const simpleNode = line.match(/^([\w-]+)$/);
         if (simpleNode) {
             ensureNode(nodes, simpleNode[1], groupStack, nodeToGroup);
         }

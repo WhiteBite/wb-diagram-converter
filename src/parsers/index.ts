@@ -18,6 +18,15 @@ export { parseBpmn, parseBpmn as parseBPMN } from './bpmn';
 export { parseGraphml, parseGraphml as parseGraphML } from './graphml';
 export { parseLucidchart } from './lucidchart';
 
+// State diagrams
+export { parseStateDiagram, parseToStateDiagramIR } from './state';
+
+// ER Diagrams
+export { parseERDiagram, isERDiagram, extractERData } from './er-parser';
+
+// Sequence diagrams
+export { parseSequenceDiagram, parseSequence } from './sequence-parser';
+
 // Base utilities
 export {
     createEmptyDiagram,

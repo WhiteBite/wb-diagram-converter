@@ -3,6 +3,7 @@ export * from './shape-mapper';
 export * from './style-mapper';
 export * from './edge-routing';
 export * from './text-encoder';
+export * from './detect-format';
 export { logger } from './logger';
 
 // Validation - old simple validator

@@ -1,14 +1,17 @@
 /**
  * Structurizr DSL Parser
- * 
+ *
  * Parses Structurizr DSL (C4 model) to IR
  * https://structurizr.com/dsl
  */
 
 import type { Diagram, DiagramNode, DiagramEdge, DiagramGroup, NodeShape } from '../types';
+import { validateInput } from './base';
 
 /** Parse Structurizr DSL to IR */
 export function parseStructurizr(code: string): Diagram {
+    validateInput(code, 'structurizr');
+
     const lines = code.split('\n');
     const nodes = new Map<string, DiagramNode>();
     const edges: DiagramEdge[] = [];
@@ -22,41 +25,153 @@ export function parseStructurizr(code: string): Diagram {
         const line = rawLine.trim();
         if (!line || line.startsWith('//') || line.startsWith('#')) continue;
 
-        // Parse person: person <id> <name> [description] [tags]
-        const personMatch = line.match(/^person\s+(\w+)\s+"([^"]+)"(?:\s+"([^"]+)")?/i);
+        // Backward compatibility: support non-assignment form used by older tests
+        // person <id> "Name" ...
+        // softwareSystem <id> "Name" ...
+        // container <id> "Name" ...
+        // component <id> "Name" ...
+        const legacyPerson = line.match(
+            /^person\s+(\w+)\s+"([^"]*(?:""[^"]*)*)"(?:\s+"([^"]+)")?/i
+        );
+        if (legacyPerson) {
+            const [, id, name] = legacyPerson;
+            nodes.set(id, createNode(id, unquoteStructurizrLabel(name), 'actor'));
+            addToContainer(id, containerStack, nodeToContainer);
+            continue;
+        }
+
+        const legacySystem = line.match(
+            /^softwareSystem\s+(\w+)\s+"([^"]*(?:""[^"]*)*)"(?:\s+"([^"]+)")?/i
+        );
+        if (legacySystem) {
+            const [, id, name] = legacySystem;
+            nodes.set(id, createNode(id, unquoteStructurizrLabel(name), 'rectangle'));
+            addToContainer(id, containerStack, nodeToContainer);
+            continue;
+        }
+
+        const legacyContainer = line.match(
+            /^container\s+(\w+)\s+"([^"]*(?:""[^"]*)*)"(?:\s+"([^"]+)")?/i
+        );
+        if (legacyContainer) {
+            const [, id, name, tech] = legacyContainer;
+            const normalizedName = unquoteStructurizrLabel(name);
+            const node = createNode(
+                id,
+                tech ? `${normalizedName}\n[${tech}]` : normalizedName,
+                'rectangle'
+            );
+            nodes.set(id, node);
+            addToContainer(id, containerStack, nodeToContainer);
+            continue;
+        }
+
+        const legacyComponent = line.match(
+            /^component\s+(\w+)\s+"([^"]*(?:""[^"]*)*)"(?:\s+"([^"]+)")?/i
+        );
+        if (legacyComponent) {
+            const [, id, name, tech] = legacyComponent;
+            const normalizedName = unquoteStructurizrLabel(name);
+            const node = createNode(
+                id,
+                tech ? `${normalizedName}\n[${tech}]` : normalizedName,
+                'rectangle'
+            );
+            nodes.set(id, node);
+            addToContainer(id, containerStack, nodeToContainer);
+            continue;
+        }
+
+        // Parse person assignment: <id> = person "Name" [description]
+        const personMatch = line.match(
+            /^(\w+)\s*=\s*person\s+"([^"]*(?:""[^"]*)*)"(?:\s+"([^"]+)"+)?/i
+        );
         if (personMatch) {
             const [, id, name] = personMatch;
-            nodes.set(id, createNode(id, name, 'actor'));
+            nodes.set(id, createNode(id, unquoteStructurizrLabel(name), 'actor'));
             addToContainer(id, containerStack, nodeToContainer);
+
+            if (line.includes('{')) {
+                containerStack.push(id);
+            }
             continue;
         }
 
-        // Parse softwareSystem: softwareSystem <id> <name> [description]
-        const systemMatch = line.match(/^softwareSystem\s+(\w+)\s+"([^"]+)"(?:\s+"([^"]+)")?/i);
+        // Parse softwareSystem assignment: <id> = softwareSystem "Name" [description]
+        const systemMatch = line.match(
+            /^(\w+)\s*=\s*softwareSystem\s+"([^"]*(?:""[^"]*)*)"(?:\s+"([^"]+)")?/i
+        );
         if (systemMatch) {
             const [, id, name] = systemMatch;
-            nodes.set(id, createNode(id, name, 'rectangle'));
+            const normalizedName = unquoteStructurizrLabel(name);
+            nodes.set(id, createNode(id, normalizedName, 'rectangle'));
             addToContainer(id, containerStack, nodeToContainer);
+
+            if (line.includes('{')) {
+                if (!groups.some(g => g.id === id)) {
+                    groups.push({
+                        id,
+                        type: 'group',
+                        label: normalizedName,
+                        children: [],
+                        style: {},
+                        metadata: { structurizrType: 'softwareSystem' },
+                    });
+                }
+                containerStack.push(id);
+            }
             continue;
         }
 
-        // Parse container: container <id> <name> [technology] [description]
-        const containerMatch = line.match(/^container\s+(\w+)\s+"([^"]+)"(?:\s+"([^"]+)")?/i);
+        // Parse container assignment: <id> = container "Name" [technology] [description]
+        const containerMatch = line.match(
+            /^(\w+)\s*=\s*container\s+"([^"]*(?:""[^"]*)*)"(?:\s+"([^"]+)")?/i
+        );
         if (containerMatch) {
             const [, id, name, tech] = containerMatch;
-            const node = createNode(id, tech ? `${name}\n[${tech}]` : name, 'rectangle');
+            const normalizedName = unquoteStructurizrLabel(name);
+            const node = createNode(
+                id,
+                tech ? `${normalizedName}\n[${tech}]` : normalizedName,
+                'rectangle'
+            );
             nodes.set(id, node);
             addToContainer(id, containerStack, nodeToContainer);
+
+            if (line.includes('{')) {
+                if (!groups.some(g => g.id === id)) {
+                    groups.push({
+                        id,
+                        type: 'group',
+                        label: normalizedName,
+                        children: [],
+                        style: {},
+                        metadata: { structurizrType: 'container' },
+                    });
+                }
+                containerStack.push(id);
+            }
             continue;
         }
 
-        // Parse component: component <id> <name> [technology] [description]
-        const componentMatch = line.match(/^component\s+(\w+)\s+"([^"]+)"(?:\s+"([^"]+)")?/i);
+        // Parse component assignment: <id> = component "Name" [technology] [description]
+        const componentMatch = line.match(
+            /^(\w+)\s*=\s*component\s+"([^"]*(?:""[^"]*)*)"(?:\s+"([^"]+)")?/i
+        );
         if (componentMatch) {
             const [, id, name, tech] = componentMatch;
-            const node = createNode(id, tech ? `${name}\n[${tech}]` : name, 'rectangle');
+            const normalizedName = unquoteStructurizrLabel(name);
+            const node = createNode(
+                id,
+                tech ? `${normalizedName}\n[${tech}]` : normalizedName,
+                'rectangle'
+            );
             nodes.set(id, node);
             addToContainer(id, containerStack, nodeToContainer);
+
+            if (line.includes('{')) {
+                containerStack.push(id);
+            }
             continue;
         }
 
@@ -78,8 +193,10 @@ export function parseStructurizr(code: string): Diagram {
             continue;
         }
 
-        // Parse group/boundary: <type> <id> { or <type> <id> <name> {
-        const groupMatch = line.match(/^(enterprise|group|softwareSystemBoundary|containerBoundary)\s+(\w+)(?:\s+"([^"]+)")?\s*\{/i);
+        // Parse group/boundary: <type> <id> { or <type> <id> "name" {
+        const groupMatch = line.match(
+            /^(enterprise|group|softwareSystemBoundary|containerBoundary)\s+(\w+)(?:\s+"([^"]+)")?\s*\{/i
+        );
         if (groupMatch) {
             const [, type, id, name] = groupMatch;
             groups.push({
@@ -114,6 +231,19 @@ export function parseStructurizr(code: string): Diagram {
         groups,
         metadata: { source: 'structurizr' },
     };
+}
+
+function unquoteStructurizrLabel(label: string): string {
+    let result = label.trim();
+
+    while (
+        (result.startsWith('"') && result.endsWith('"')) ||
+        (result.startsWith("'") && result.endsWith("'"))
+    ) {
+        result = result.slice(1, -1).trim();
+    }
+
+    return result.replace(/""/g, '"');
 }
 
 function createNode(id: string, label: string, shape: NodeShape): DiagramNode {

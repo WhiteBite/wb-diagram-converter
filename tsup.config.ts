@@ -3,6 +3,7 @@ import { defineConfig } from 'tsup';
 export default defineConfig({
     entry: {
         index: 'src/index.ts',
+        'convert.worker': 'src/api/convert.worker.ts',
         'parsers/index': 'src/parsers/index.ts',
         'generators/index': 'src/generators/index.ts',
         'types/index': 'src/types/index.ts',

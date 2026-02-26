@@ -2,23 +2,41 @@
  * Mermaid diagram parser
  * 
  * Parses Mermaid flowchart syntax to IR
+ * 
+ * Supported features:
+ * - Comments (%% comment)
+ * - Node styles (style A fill:#f9f)
+ * - Class definitions (classDef, class)
+ * - Direction inside subgraph (direction TB)
+ * - Edge labels in multiple formats (A -->|text| B, A -- text --> B)
+ * - Special characters in node text
  */
 
-import type { Diagram, DiagramNode, DiagramEdge, DiagramGroup, DiagramType, NodeShape } from '../types';
+import type { Diagram, DiagramNode, DiagramEdge, DiagramGroup, DiagramType, NodeShape, NodeStyle } from '../types';
 import { generateId, parseMermaidArrow, detectMermaidShape } from '../utils';
 import { validateInput } from './base';
+
+/** Class definition storage */
+interface ClassDef {
+    name: string;
+    style: NodeStyle;
+}
 
 /** Parse Mermaid diagram to IR */
 export function parseMermaid(source: string): Diagram {
     validateInput(source, 'mermaid');
 
-    const lines = source.trim().split('\n');
+    // Pre-process: remove inline comments and normalize
+    const cleanedSource = preprocessSource(source);
+    const lines = cleanedSource.split('\n');
+    
     const nodes: DiagramNode[] = [];
     const edges: DiagramEdge[] = [];
     const groups: DiagramGroup[] = [];
 
     const nodeMap = new Map<string, DiagramNode>();
     const groupStack: DiagramGroup[] = [];
+    const classDefs = new Map<string, ClassDef>();
 
     let diagramType: DiagramType = 'flowchart';
     let direction = 'TB';
@@ -26,7 +44,7 @@ export function parseMermaid(source: string): Diagram {
     for (const rawLine of lines) {
         const line = rawLine.trim();
 
-        // Skip empty lines and comments
+        // Skip empty lines and full-line comments
         if (!line || line.startsWith('%%')) {
             continue;
         }
@@ -39,14 +57,29 @@ export function parseMermaid(source: string): Diagram {
             continue;
         }
 
-        // Handle subgraph start
-        const subgraphMatch = line.match(/^subgraph\s+(\w+)(?:\s*\[([^\]]+)\])?/i);
+        // Handle direction inside subgraph: direction TB
+        const directionMatch = line.match(/^direction\s+(TB|BT|LR|RL|TD)/i);
+        if (directionMatch) {
+            // Store direction in current group if any
+            if (groupStack.length > 0) {
+                const currentGroup = groupStack[groupStack.length - 1];
+                currentGroup.metadata = {
+                    ...currentGroup.metadata,
+                    direction: directionMatch[1].toUpperCase(),
+                };
+            }
+            continue;
+        }
+
+        // Handle subgraph start - improved pattern for quoted labels
+        const subgraphMatch = line.match(/^subgraph\s+(\w+)(?:\s*\[([^\]]+)\]|\s+"([^"]+)"|\s+([^\s\[]+))?/i);
         if (subgraphMatch) {
-            const [, id, label] = subgraphMatch;
+            const [, id, bracketLabel, quotedLabel, plainLabel] = subgraphMatch;
+            const label = bracketLabel || quotedLabel || plainLabel || id;
             const group: DiagramGroup = {
                 id,
                 type: 'group',
-                label: label || id,
+                label: unescapeText(label),
                 children: [],
                 style: {},
             };
@@ -61,7 +94,37 @@ export function parseMermaid(source: string): Diagram {
             continue;
         }
 
-        // Parse edges: A --> B or A -->|label| B
+        // Parse classDef: classDef className fill:#f9f,stroke:#333
+        const classDefMatch = line.match(/^classDef\s+(\w+)\s+(.+)/i);
+        if (classDefMatch) {
+            const [, className, styleStr] = classDefMatch;
+            const style = parseMermaidStyleString(styleStr);
+            classDefs.set(className, { name: className, style });
+            continue;
+        }
+
+        // Parse class assignment: class A,B,C className
+        const classAssignMatch = line.match(/^class\s+([\w,\s]+)\s+(\w+)/i);
+        if (classAssignMatch) {
+            const [, nodeIds, className] = classAssignMatch;
+            const classDef = classDefs.get(className);
+            if (classDef) {
+                const ids = nodeIds.split(',').map(id => id.trim());
+                for (const nodeId of ids) {
+                    const node = nodeMap.get(nodeId);
+                    if (node) {
+                        node.style = { ...node.style, ...classDef.style };
+                        node.metadata = {
+                            ...node.metadata,
+                            className,
+                        };
+                    }
+                }
+            }
+            continue;
+        }
+
+        // Parse edges: A --> B or A -->|label| B or A -- text --> B
         // Also handles chains: A --> B --> C
         const edgeMatches = parseEdgeLine(line);
         if (edgeMatches && edgeMatches.length > 0) {
@@ -78,7 +141,7 @@ export function parseMermaid(source: string): Diagram {
                     // Update label if provided
                     const node = nodeMap.get(sourceId)!;
                     const { shape, label } = detectMermaidShape(sourceLabel);
-                    node.label = label;
+                    node.label = unescapeText(label);
                     node.shape = shape;
                 }
 
@@ -91,7 +154,7 @@ export function parseMermaid(source: string): Diagram {
                 } else if (targetLabel && targetLabel !== targetId) {
                     const node = nodeMap.get(targetId)!;
                     const { shape, label } = detectMermaidShape(targetLabel);
-                    node.label = label;
+                    node.label = unescapeText(label);
                     node.shape = shape;
                 }
 
@@ -101,7 +164,7 @@ export function parseMermaid(source: string): Diagram {
                     type: 'edge',
                     source: sourceId,
                     target: targetId,
-                    label: edgeLabel,
+                    label: edgeLabel ? unescapeText(edgeLabel) : undefined,
                     arrow: parseMermaidArrow(arrow),
                     style: {},
                 };
@@ -135,9 +198,24 @@ export function parseMermaid(source: string): Diagram {
             continue;
         }
 
-        // Parse class definitions: classDef className fill:#f9f
-        // Parse class assignments: class A,B className
-        // (simplified - full implementation would track class definitions)
+        // Parse inline class assignment: A:::className
+        const inlineClassMatch = line.match(/^(\w+):::(\w+)/);
+        if (inlineClassMatch) {
+            const [, nodeId, className] = inlineClassMatch;
+            const classDef = classDefs.get(className);
+            if (classDef) {
+                let node = nodeMap.get(nodeId);
+                if (!node) {
+                    node = createNode(nodeId);
+                    nodes.push(node);
+                    nodeMap.set(nodeId, node);
+                    addToCurrentGroup(node.id, groupStack);
+                }
+                node.style = { ...node.style, ...classDef.style };
+                node.metadata = { ...node.metadata, className };
+            }
+            continue;
+        }
     }
 
     return {
@@ -151,6 +229,27 @@ export function parseMermaid(source: string): Diagram {
             direction,
         },
     };
+}
+
+/** Pre-process source: remove inline comments, handle multi-line */
+function preprocessSource(source: string): string {
+    return source
+        .split('\n')
+        .map(line => {
+            // Remove inline comments (but not %% at start of line - those are handled later)
+            const commentIndex = line.indexOf('%%');
+            if (commentIndex > 0) {
+                // Check if %% is inside quotes
+                const beforeComment = line.slice(0, commentIndex);
+                const quoteCount = (beforeComment.match(/"/g) || []).length;
+                if (quoteCount % 2 === 0) {
+                    // Not inside quotes, safe to remove
+                    return line.slice(0, commentIndex);
+                }
+            }
+            return line;
+        })
+        .join('\n');
 }
 
 /** Edge match result type */
@@ -180,27 +279,66 @@ function parseEdgeLine(line: string): EdgeMatch[] | null {
     let currentLabel = firstMatch[2];
     remaining = remaining.slice(firstMatch[0].length);
 
-    // Parse chain: (arrow |label|? nodeId shape?)+
-    const chainRegex = new RegExp(`^(${arrowPattern})\\s*(?:\\|([^|]*)\\|)?\\s*(\\w+)(${shapePattern})?\\s*`);
+    // Parse chain: supports multiple edge label formats:
+    // 1. A -->|text| B (pipe format)
+    // 2. A -- text --> B (inline text format)
+    // 3. A --> B (no label)
+    
+    // Pattern for pipe-style labels: -->|text|
+    const pipeChainRegex = new RegExp(`^(${arrowPattern})\\s*(?:\\|([^|]*)\\|)?\\s*(\\w+)(${shapePattern})?\\s*`);
+    
+    // Pattern for inline text labels: -- text -->
+    const inlineTextRegex = new RegExp(`^--\\s+([^-]+?)\\s+(${arrowPattern})\\s*(\\w+)(${shapePattern})?\\s*`);
 
     let chainMatch: RegExpMatchArray | null;
-    while ((chainMatch = remaining.match(chainRegex)) !== null) {
-        const [full, arrow, edgeLabel, targetId, targetLabel] = chainMatch;
+    
+    while (remaining.length > 0) {
+        // Try inline text format first: -- text -->
+        const inlineMatch = remaining.match(inlineTextRegex);
+        if (inlineMatch) {
+            const [full, edgeLabel, arrow, targetId, targetLabel] = inlineMatch;
+            
+            if (isValidArrow(arrow)) {
+                results.push({
+                    sourceId: currentId,
+                    sourceLabel: currentLabel?.trim(),
+                    arrow: arrow.trim(),
+                    targetId,
+                    targetLabel: targetLabel?.trim(),
+                    edgeLabel: edgeLabel?.trim(),
+                });
 
-        if (!isValidArrow(arrow)) break;
+                currentId = targetId;
+                currentLabel = targetLabel;
+                remaining = remaining.slice(full.length);
+                continue;
+            }
+        }
+        
+        // Try pipe format: -->|text| or just -->
+        chainMatch = remaining.match(pipeChainRegex);
+        if (chainMatch) {
+            const [full, arrow, edgeLabel, targetId, targetLabel] = chainMatch;
 
-        results.push({
-            sourceId: currentId,
-            sourceLabel: currentLabel?.trim(),
-            arrow: arrow.trim(),
-            targetId,
-            targetLabel: targetLabel?.trim(),
-            edgeLabel: edgeLabel?.trim(),
-        });
+            if (!isValidArrow(arrow)) break;
 
-        currentId = targetId;
-        currentLabel = targetLabel;
-        remaining = remaining.slice(full.length);
+            results.push({
+                sourceId: currentId,
+                sourceLabel: currentLabel?.trim(),
+                arrow: arrow.trim(),
+                targetId,
+                targetLabel: targetLabel?.trim(),
+                edgeLabel: edgeLabel?.trim(),
+            });
+
+            currentId = targetId;
+            currentLabel = targetLabel;
+            remaining = remaining.slice(full.length);
+            continue;
+        }
+        
+        // No more matches
+        break;
     }
 
     return results.length > 0 ? results : null;
@@ -220,7 +358,7 @@ function createNode(id: string, labelPart?: string): DiagramNode {
     if (labelPart) {
         const detected = detectMermaidShape(labelPart);
         shape = detected.shape;
-        label = detected.label;
+        label = unescapeText(detected.label);
     }
 
     return {
@@ -240,29 +378,76 @@ function addToCurrentGroup(nodeId: string, groupStack: DiagramGroup[]): void {
     }
 }
 
-/** Apply Mermaid style string to node */
-function applyMermaidStyle(node: DiagramNode, styleStr: string): void {
+/** Unescape special characters in text */
+function unescapeText(text: string): string {
+    return text
+        .replace(/#quot;/g, '"')
+        .replace(/#amp;/g, '&')
+        .replace(/#lt;/g, '<')
+        .replace(/#gt;/g, '>')
+        .replace(/#semi;/g, ';')
+        .replace(/#colon;/g, ':')
+        .replace(/#pipe;/g, '|')
+        .replace(/#lpar;/g, '(')
+        .replace(/#rpar;/g, ')')
+        .replace(/#lbrace;/g, '{')
+        .replace(/#rbrace;/g, '}')
+        .replace(/#lbrack;/g, '[')
+        .replace(/#rbrack;/g, ']')
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/\\n/g, '\n');
+}
+
+/** Parse Mermaid style string to NodeStyle */
+function parseMermaidStyleString(styleStr: string): NodeStyle {
+    const style: NodeStyle = {};
     const parts = styleStr.split(',').map(p => p.trim());
 
     for (const part of parts) {
-        const [key, value] = part.split(':').map(s => s.trim());
+        const colonIndex = part.indexOf(':');
+        if (colonIndex === -1) continue;
+        
+        const key = part.slice(0, colonIndex).trim();
+        const value = part.slice(colonIndex + 1).trim();
 
         switch (key) {
             case 'fill':
-                node.style.fill = value;
+                style.fill = value;
                 break;
             case 'stroke':
-                node.style.stroke = value;
+                style.stroke = value;
                 break;
             case 'stroke-width':
-                node.style.strokeWidth = parseInt(value);
+                style.strokeWidth = parseInt(value);
                 break;
             case 'color':
-                node.style.fontColor = value;
+                style.fontColor = value;
                 break;
             case 'font-size':
-                node.style.fontSize = parseInt(value);
+                style.fontSize = parseInt(value);
+                break;
+            case 'font-weight':
+                style.fontWeight = value === 'bold' ? 'bold' : 'normal';
+                break;
+            case 'font-family':
+                style.fontFamily = value;
+                break;
+            case 'opacity':
+                style.opacity = parseFloat(value);
+                break;
+            case 'rx':
+            case 'ry':
+                // Border radius
+                style.rounded = parseInt(value);
                 break;
         }
     }
+
+    return style;
+}
+
+/** Apply Mermaid style string to node */
+function applyMermaidStyle(node: DiagramNode, styleStr: string): void {
+    const parsedStyle = parseMermaidStyleString(styleStr);
+    node.style = { ...node.style, ...parsedStyle };
 }
